@@ -1,18 +1,22 @@
-#!/usr/bin/env sh
+#!/bin/sh
 
-trap stop SIGTERM SIGINT
+set -ex 
 
-stop() {
-    /usr/sbin/rpc.nfsd 0
-    killall /usr/sbin/rpc.mountd
-    umount /proc/fs/nfsd /var/lib/nfs/rpc_pipefs
+cat /etc/exports
+exportfs -rv
+cat /var/lib/nfs/etab
 
-    exit 0
+mount -t nfsd nfsd /proc/fs/nfsd
+
+cleanup() {
+  rpc.nfsd 0
+  killall rpc.mountd || true
+  exit 0
 }
 
-mount -a
+trap cleanup SIGINT SIGTERM
 
-/usr/sbin/rpc.nfsd --tcp --udp --port 2049 --nfs-version 4.2 --no-nfs-version 3
-/usr/sbin/rpc.mountd --foreground --port 32767 --nfs-version 4.2 --no-nfs-version 2 --no-nfs-version 3 &
+rpc.nfsd --tcp --no-udp --port 2049 --nfs-version 4.2 --no-nfs-version 3
+rpc.mountd -F --nfs-version 4.2 --no-nfs-version 2 --no-nfs-version 3 &
 
-wait
+wait 
